@@ -166,7 +166,7 @@ class Node {
         test.div2 = seconddir;
         const Node1 = FindNode(test.div1.parentNode);
         const Node2 = FindNode(test.div2.parentNode);
-        if (Node1 && Node2 && Node1 != Node2 && !containsObject(Node1,Node2.outputs)) {
+        if (Node1 && Node2 && !containsObject(Node1,Node2.outputs)) {
           test.connected = true;
           Node1.outputs.push(Node2);
           Node2.inputs.push(Node1);
