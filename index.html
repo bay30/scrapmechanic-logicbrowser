@@ -1,88 +1,52 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <title>ScrapMechanic Logic</title>
-        <link rel="stylesheet" href="style.css">
-    </head>
-    <body>
-        <script src="main.js"></script>
-        <div class="menu">
-            <div class="right">
-                <ol>
-                    <li>
-                        <div class="displaynode">
-                            <header>AND</header>
-                            <div class="content">
-                                <div class="ico"><i class="bx bx-move"></i></div>
-                                <div class="title">Active if all of the linked triggers are active</div>
-                            </div>
-                        </div>
-                    </li>
-                    <li>
-                        <div class="displaynode">
-                            <header>OR</header>
-                            <div class="content">
-                                <div class="ico"><i class="bx bx-move"></i></div>
-                                <div class="title">Active if any of the linked triggers are active</div>
-                            </div>
-                        </div>
-                    </li>
-                    <li>
-                        <div class="displaynode">
-                            <header>XOR</header>
-                            <div class="content">
-                                <div class="ico"><i class="bx bx-move"></i></div>
-                                <div class="title">Active if only one of the linked triggers are active</div>
-                            </div>
-                        </div>
-                    </li>
-                    <li>
-                        <div class="displaynode">
-                            <header>NAND</header>
-                            <div class="content">
-                                <div class="ico"><i class="bx bx-move"></i></div>
-                                <div class="title">Active if any of the linked triggers are inactive</div>
-                            </div>
-                        </div>
-                    </li>
-                    <li>
-                        <div class="displaynode">
-                            <header>NOR</header>
-                            <div class="content">
-                                <div class="ico"><i class="bx bx-move"></i></div>
-                                <div class="title">Active if all of the linked triggers are inactive</div>
-                            </div>
-                        </div>
-                    </li>
-                    <li>
-                        <div class="displaynode">
-                            <header>XNOR</header>
-                            <div class="content">
-                                <div class="ico"><i class="bx bx-move"></i></div>
-                                <div class="title">Active if an even number of linked triggers are inactive</div>
-                            </div>
-                        </div>
-                    </li>
-                    <li>
-                        <div class="displaynode">
-                            <header>BUTTON</header>
-                            <div class="content">
-                                <div class="ico"><i class="bx bx-move"></i></div>
-                                <div class="title">Held</div>
-                            </div>
-                        </div>
-                    </li>
-                    <li>
-                        <div class="displaynode">
-                            <header>SWITCH</header>
-                            <div class="content">
-                                <div class="ico"><i class="bx bx-move"></i></div>
-                                <div class="title">Toggled</div>
-                            </div>
-                        </div>
-                    </li>
-                </ol>
+  <head>
+    <title>Rewrite Test</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <canvas id="myCanvas"></canvas>
+    <script src="main.js"></script>
+    <t class="stroke">Made by:<br/>Programmer Alex<br/><br/>Controls:<br/>Left Click -Wire<br/>Right Click - Move<br/>E - Interact<br/>F - Cycle Mode<br/>X - Delete<br/>B - Export</t>
+    <div class="info" hidden=true>Copied to clipboard.</div>
+    <div class="menu">
+      <div class="right">
+        <ol>
+          <li>
+            <div class="displaynode" name="9f0f56e8-2c31-4d83-996c-d00a9b296c3f">
+              <header>Logic Gate</header>
+              <div class="content">
+                <div class="ico"><i class="bx bx-move"></i></div>
+                <div class="title">
+                  Gives an output depending on its inputs.
+                </div>
+              </div>
             </div>
-        </div>
-    </body>
+          </li>
+          <li>
+            <div class="displaynode" name="1e8d93a4-506b-470d-9ada-9c0a321e2db5">
+              <header>Button</header>
+              <div class="content">
+                <div class="ico"><i class="bx bx-move"></i></div>
+                <div class="title">
+                  Outputs true if pressed.
+                </div>
+              </div>
+            </div>
+          </li>
+          <li>
+            <div class="displaynode" name="7cf717d7-d167-4f2d-a6e7-6b2c70aa3986">
+              <header>Switch</header>
+              <div class="content">
+                <div class="ico"><i class="bx bx-move"></i></div>
+                <div class="title">
+                  Outputs true if toggled.
+                </div>
+              </div>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </div>
+  </body>
 </html>

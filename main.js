@@ -1,554 +1,566 @@
-function containsObject(obj, list) {
-  var i;
-  for (i = 0; i < list.length; i++) {
-      if (list[i] == obj) {
-          return true;
-      }
-  }
+const canvas = document.getElementById("myCanvas");
+const ctx = canvas.getContext("2d");
 
-  return false;
-}
+var CanvasOffsetX = 0;
+var CanvasOffsetX = 0;
+var camX = 0;
+var camY = 0;
+var gridSize = 128;
 
-var Nodes = [];
-var Lines = [];
-class Line {
-  constructor(id) {
-    this.id = id || -1;
-  }
+var mouseX = 0;
+var mouseY = 0;
 
-  init(div1, div2) {
-    Lines.push(this);
+var Textures = {};
 
-    const Line = document.createElement("div");
-
-    Line.className = "line";
-
-    this.gui = [Line];
-    this.div1 = div1;
-    this.div2 = div2;
-
-    document.body.appendChild(Line);
-
-    this.update();
-  }
-
-  update(xdict, ydict) {
-    const val1 = xdict ||
-      (this.div1 && this.div1.getBoundingClientRect()) || { left: 0, top: 0 };
-    const val2 = ydict ||
-      (this.div2 && this.div2.getBoundingClientRect()) || {
-        left: 100,
-        top: 100,
-      };
-
-    let ax = val1.left + 5;
-    let ay = val1.top;
-    let bx = val2.left + 5;
-    let by = val2.top;
-    // this below is from stack overflow
-    if (ax > bx) {
-      bx = ax + bx;
-      ax = bx - ax;
-      bx = bx - ax;
-
-      by = ay + by;
-      ay = by - ay;
-      by = by - ay;
-    }
-
-    let distance = Math.sqrt(Math.pow(bx - ax, 2) + Math.pow(by - ay, 2));
-    let calc = Math.atan((by - ay) / (bx - ax));
-    let degree = (calc * 180) / Math.PI;
-
-    // now we apply the fancy stack overflow stuff idk
-
-    this.gui[0].style.width = `${distance}px`;
-    this.gui[0].style.height = `${10}px`;
-    this.gui[0].style.top = `${ay}px`;
-    this.gui[0].style.left = `${ax}px`;
-    this.gui[0].style.transformOrigin = "center left";
-    this.gui[0].style.transform = `rotate(${degree}deg)`;
-  }
-
-  destroy() {
-    if (this.connected) {
-      const Node1 = FindNode(this.div1.parentNode);
-      const Node2 = FindNode(this.div2.parentNode);
-      if (Node1) {
-        const N1 = Node1.outputs.findIndex((item) => {
-          return item == Node2;
-        });
-        if (N1 != -1) {
-          Node1.outputs.splice(N1,1);
-        }
-        const N2 = Node1.lines.findIndex((item) => {
-            return item == this;
-          });
-          if (N2 != -1) {
-            Node1.lines.splice(N2,1);
-          }
-      }
-      if (Node2) {
-        const N1 = Node2.inputs.findIndex((item) => {
-          return item == Node1;
-        });
-        if (N1 != -1) {
-          Node2.inputs.splice(N1,1);
-        }
-        const N2 = Node2.lines.findIndex((item) => {
-            return item == this;
-          });
-          if (N2 != -1) {
-            Node2.lines.splice(N2,1);
-          }
-      }
-    }
-    this.gui[0].remove();
-    delete this;
-  }
-}
+// Classes //
 
 class Node {
-  constructor(id, shapeid, title, desc) {
-    this.id = id;
-    this.shapeid = shapeid
-    this.title = title;
-    this.desc = desc;
-    this.x = 0;
-    this.y = 0;
-    this.inputs = [];
-    this.outputs = [];
-    this.lines = [];
-    this.active = false;
-    this.laststate = false;
-  }
-
-  nodeinteraction(e) {
-    e.stopImmediatePropagation();
-    let test = new Line();
-    test.init(this.gui["Out"], this.gui["Out"]);
-
-    window.addEventListener("mousemove", mousemove);
-    window.addEventListener("mouseup", mouseup);
-    window.addEventListener("touchmove", mousemove);
-    window.addEventListener("touchend", mouseup);
-
-    var seconddir;
-
-    function mousemove(e) {
-      var list = document.elementsFromPoint(e.clientX, e.clientY);
-      let secondargs = { left: e.clientX, top: e.clientY };
-      seconddir = undefined;
-      for (const item of list) {
-        if (item.className == "in") {
-          secondargs = item.getBoundingClientRect();
-          seconddir = item;
-        }
-        if (item.className == "node") {
-          const In = item.getElementsByClassName("in")
-          if (In && In[0]) {
-            secondargs = In[0].getBoundingClientRect();
-            seconddir = In[0];
-            break;
-          }
-        }
-      }
-      console.log(secondargs);
-      test.update(undefined, secondargs);
-    }
-
-    function mouseup(e) {
-      window.removeEventListener("mousemove", mousemove);
-      window.removeEventListener("mouseup", mouseup);
-      window.removeEventListener("touchmove", mousemove);
-      window.removeEventListener("touchend", mouseup);
-      if (seconddir) {
-        test.div2 = seconddir;
-        const Node1 = FindNode(test.div1.parentNode);
-        const Node2 = FindNode(test.div2.parentNode);
-        if (Node1 && Node2 && Node1 != Node2 && !containsObject(Node1,Node2.outputs)) {
-          test.connected = true;
-          Node1.outputs.push(Node2);
-          Node2.inputs.push(Node1);
-          Node1.lines.push(test);
-          Node2.lines.push(test);
-          Node2.logicupdate();
-        } else {
-          test.destroy();
-        }
-      } else {
-        test.destroy();
-      }
+  constructor(layer, x, y, data) {
+    if (layer.constructor.name == "Layer") {
+      this.layer = layer;
+      this.x = x ?? 0;
+      this.y = y ?? 0;
+      this.data = data ?? {};
+      this.layer.nodes.push(this);
+      this.inputs = [];
+      this.outputs = [];
+    } else {
+      console.log("you must pass a layer.");
+      delete this;
     }
   }
 
-  mousedown(e) {
+  delete() {
+    const index = this.layer.nodes.findIndex((element) => element == node);
+    this.layer.nodes.splice(index, 1);
+    delete this;
+    render();
+  }
 
-    if (e.which == 3) {
-      this.destroy();
+  connected(node) {
+    const input = this.inputs.findIndex((element) => element == node);
+    const output = this.outputs.findIndex((element) => element == node);
+    if (input != -1 || output != -1) {
+      return true;
+    }
+  }
+
+  removeinput(node) {
+    const index = this.inputs.findIndex((element) => element == node);
+    AddUpdateLogic(this);
+    this.inputs.splice(index, 1);
+  }
+
+  removeoutput() {
+    const index = this.outputs.findIndex((element) => element == node);
+    this.outputs.splice(index, 1);
+  }
+
+  appendinput(node) {
+    if (this.inputs.find((element) => element == node)) {
       return;
     }
+    this.inputs.push(node);
+    AddUpdateLogic(this);
+  }
 
-    this.gui["Title"].classList.add("active");
-
-    const PosX = e.clientX || e.touches[0].clientX;
-    const PosY = e.clientY || e.touches[0].clientY;
-
-    window.addEventListener("mousemove", mousemove);
-    window.addEventListener("mouseup", mouseup);
-    window.addEventListener("touchmove", mousemove);
-    window.addEventListener("touchend", mouseup);
-
-    const rect = this.gui["Title"].getBoundingClientRect();
-    const offsetX = rect.left + rect.width / 2 - PosX;
-    const offsetY = rect.top + rect.height / 2 - PosY;
-
-    var self = this;
-    function mousemove(e) {
-      const X = (e.clientX || e.touches[0].clientX) + offsetX;
-      const Y = (e.clientY || e.touches[0].clientY) + offsetY;
-
-      self.x = (X - camX) / (gridSize / defaultGrid);
-      self.y = (Y - camY) / (gridSize / defaultGrid);
-
-      self.update();
+  appendoutput(node) {
+    if (this.outputs.find((element) => element == node)) {
+      return;
     }
+    if (this.inputs.find((element) => element == node)) {
+      return;
+    }
+    this.outputs.push(node);
+    AddUpdateLogic(this);
+  }
 
-    function mouseup(e) {
-      self.gui["Title"].classList.remove("active");
-      window.removeEventListener("mousemove", mousemove);
-      window.removeEventListener("mouseup", mouseup);
-      window.removeEventListener("touchmove", mousemove);
-      window.removeEventListener("touchend", mouseup);
+  activeupdate(NewState) {
+    if (NewState == this.data.active) {
+      return;
+    }
+    this.data.active = NewState;
+
+    for (let output of this.outputs) {
+      AddUpdateLogic(output);
     }
   }
 
-  init(x, y) {
+  render() {
+    if (
+      !Textures[this.data.shapeId] ||
+      !Textures[this.data.shapeId][this.data.mode ?? 0] ||
+      !Textures[this.data.shapeId][this.data.mode ?? 0][
+        this.data.active ?? false
+      ]
+    ) {
+      if (!Textures[this.data.shapeId]) {
+        Textures[this.data.shapeId] = {};
+      }
+      if (!Textures[this.data.shapeId][this.data.mode ?? 0]) {
+        Textures[this.data.shapeId][this.data.mode ?? 0] = {};
+      }
+      let Target = Textures[this.data.shapeId][this.data.mode ?? 0];
+      Target[this.data.active ?? false] = new Image();
+      Target = Target[this.data.active ?? false];
 
-    Nodes.push(this);
-
-    this.x = x || this.x;
-    this.y = y || this.y;
-
-    const Frame = document.createElement("div");
-    const Title = document.createElement("header");
-    const Content = document.createElement("div");
-    const Description = document.createElement("div");
-    const In = document.createElement("div");
-    const Out = document.createElement("div");
-
-    Frame.className = "node";
-    Content.className = "content";
-    Description.className = "title";
-    In.className = "in";
-    Out.className = "out";
-
-    Title.textContent = this.title;
-    Description.textContent = this.desc;
-
-    Frame.appendChild(Title);
-    Frame.appendChild(Content);
-    Frame.appendChild(In);
-    Frame.appendChild(Out);
-    Content.appendChild(Description);
-
-    document.body.appendChild(Frame);
-
-    this.gui = {Frame:Frame, Title:Title, Content:Content, Description:Description, In:In, Out:Out};
-    
-    let number;
-    let jank;
-    if (this.title == "SWITCH") {
-        number = 1;
-    } else {
-        number = 0;
+      Target.onload = render;
+      Target.src = `Images/${this.data.shapeId}/${this.data.mode ?? 0}/${
+        this.data.active ?? false
+      }.png`;
     }
-
-    if (number != undefined) {
-        jank = new Interactable(this,number);
+    let X = CanvasOffsetX - this.x * gridSize - gridSize / 2 - camX;
+    let Y = CanvasOffsetY - this.y * gridSize - gridSize / 2 - camY;
+    ctx.drawImage(
+      Textures[this.data.shapeId][this.data.mode ?? 0][
+        this.data.active ?? false
+      ],
+      X,
+      Y,
+      gridSize,
+      gridSize
+    );
+    for (let output of this.outputs) {
+      const [X, Y] = ToWorldSpace(this.x * gridSize, this.y * gridSize);
+      const [XX, YY] = ToWorldSpace(output.x * gridSize, output.y * gridSize);
+      DrawLine(X, Y, XX, YY);
     }
+  }
+}
 
-    this.gui["Frame"].addEventListener("mousedown", (e) => this.mousedown(e));
-    this.gui["Frame"].addEventListener("touchstart", (e) => this.mousedown(e));
-    Out.addEventListener("mousedown", (e) => this.nodeinteraction(e));
-    Out.addEventListener("touchstart", (e) => this.nodeinteraction(e));
+function NodesInCell(GridX, GridY) {
+  let Node;
+  for (layer of VLayers) {
+    for (node of layer.nodes) {
+      if (node.x == GridX && node.y == GridY) {
+        Node = node;
+        break;
+      }
+    }
+    if (Node) {
+      break;
+    }
+  }
+  return Node;
+}
 
-    this.update();
+var VLayers = [];
+class Layer {
+  constructor(name) {
+    this.name = name;
+    this.nodes = [];
+  }
+
+  show() {
+    if (VLayers.includes(this)) {
+      return;
+    }
+    VLayers.push(this);
+  }
+
+  hide() {
+    VLayers.splice(VLayers.indexOf(this), 1);
+  }
+
+  render() {
+    for (let node of this.nodes) {
+      node.render();
+    }
+  }
+}
+
+class LogicGate extends Node {
+  constructor(layer, x, y, data) {
+    super(...arguments);
+  }
+
+  cyclemode() {
+    this.data.mode = this.data.mode >= 5 ? 0 : this.data.mode + 1;
+    render();
   }
 
   update() {
-    this.gui["Frame"].style.left =
-      Math.round((this.x * (gridSize / defaultGrid)) / gridSize) * gridSize +
-      camX +
-      1 +
-      "px";
-    this.gui["Frame"].style.top =
-      Math.round((this.y * (gridSize / defaultGrid)) / gridSize) * gridSize +
-      camY +
-      1 +
-      "px";
-    this.gui["Frame"].style.width = `${gridSize * 3}px`;
-    this.gui["Frame"].style.height = `${gridSize}px`;
-
-    this.gui["Title"].style.fontSize = `${40 * (gridSize / defaultGrid)}px`;
-    /*this.gui["Title"].style.padding = `${10 * (gridSize / defaultGrid)}px ${
-      10 * (gridSize / defaultGrid)
-    }px`; */
-
-    this.gui["Description"].style.fontSize = `${40 * (gridSize / defaultGrid)}px`;
-
-    for (let item of this.lines) {
-        item.update();
-    }
-  }
-
-  logicupdate() {
-    let AND = this.inputs.length > 0 && true || false;
-    let ANY = false;
-    let EVEN = false;
-    let NAND = this.inputs.length > 0 && true || false;
-    let NOR = false;
-    let XNOR = false;
-    for (let item of this.inputs) {
-        if (item.active) {
-            ANY = true;
-            EVEN = !EVEN;
-            NAND = false;
-        } else {
-            AND = false;
-            NOR = true;
-            XNOR = !XNOR;
+    let NewState = false;
+    if (this.data.mode == 0) {
+      NewState = true;
+      for (let node of this.inputs) {
+        if (!node.data.active) {
+          NewState = false;
+          break;
         }
-    }
-    if (this.title == "AND") {
-        this.active = AND
-    } else if (this.title == "OR") {
-        this.active = ANY
-    } else if (this.title == "XOR") {
-        this.active = EVEN
-    } else if (this.title == "NAND") {
-        this.active = NAND
-    } else if (this.title == "NOR") {
-        this.active = NOR
-    } else if (this.title == "XNOR") {
-        this.active = XNOR
-    }
-    if (this.laststate == this.active) { return; }
-    for (let item of this.outputs) {
-      setTimeout(function() {
-        item.logicupdate();
-      }, 25);
-    }
-
-    this.laststate = this.active;
-
-    this.visualupdate();
-  }
-
-  visualupdate() {
-    this.gui["Frame"].style.backgroundColor = this.active && `green` || `red`;
-  }
-
-  destroy() {
-    const Clone = this.lines.slice()
-    for (let line of Clone) {
-      line.destroy();
-    }
-    const us = Nodes.findIndex((item) => {
-      return item == this
-    });
-    if (us != -1) {
-      Nodes.splice(us,1)
-    }
-    this.gui["Frame"].remove();
-    delete this;
-  }
-}
-
-class Interactable {
-    constructor(attach,type) {
-        this.attach = attach
-        this.type = type
-        this.active = false
-        this.init();
-    }
-
-    init() {
-        
-        var self = this
-        function mousedown(e) {
-            if (e.which != 2) { return; }
-            e.stopImmediatePropagation();
-            if (self.type == 0) {
-                self.attach.active = true;
-            }
-            if (self.type == 1) {
-                self.attach.active = !self.attach.active;
-            }
-            self.attach.logicupdate();
+      }
+    } else if (this.data.mode == 1) {
+      for (let node of this.inputs) {
+        if (node.data.active) {
+          NewState = true;
+          break;
         }
-
-        function mouseup(e) {
-            if (e.which != 2) { return; }
-            e.stopImmediatePropagation();
-            if (self.type == 0) {
-                self.attach.active = false;
-            }
-            self.attach.logicupdate();
+      }
+    } else if (this.data.mode == 2) {
+      for (let node of this.inputs) {
+        if (node.data.active) {
+          NewState = !NewState;
         }
-
-        this.attach.gui["Frame"].addEventListener("mousedown",mousedown)
-        this.attach.gui["Frame"].addEventListener("touchstart", mousedown);
-
-        this.attach.gui["Frame"].addEventListener("mouseup",mouseup)
-        this.attach.gui["Frame"].addEventListener("touchup", mouseup);
-
+      }
+    } else if (this.data.mode == 3) {
+      for (let node of this.inputs) {
+        if (!node.data.active) {
+          NewState = true;
+          break;
+        }
+      }
+    } else if (this.data.mode == 4) {
+      NewState = true;
+      for (let node of this.inputs) {
+        if (node.data.active) {
+          NewState = false;
+          break;
+        }
+      }
+    } else if (this.data.mode == 5) {
+      NewState = (this.inputs.length > 0) && true || false;
+      for (let node of this.inputs) {
+        if (node.data.active) {
+          NewState = !NewState;
+        }
+      }
     }
+
+    this.activeupdate(NewState);
+  }
 }
 
-function FindNode(div) {
-  for (const item of Nodes) {
-    if (item.gui["Frame"] == div) {
-      return item;
+class Button extends Node {
+  constructor(layer, x, y, data) {
+    super(...arguments);
+  }
+
+  interactdown() {
+    let dis = this;
+    this.activeupdate(true);
+    render();
+    function func(e) {
+      if (e.key == "e") {
+        window.removeEventListener("keyup", func);
+        dis.activeupdate(false);
+        render();
+      }
     }
+    window.addEventListener("keyup", func);
   }
 }
 
-let camX = 0;
-let camY = 0;
-let camS = 1;
-
-const defaultGrid = 100;
-let gridSize = defaultGrid / 2;
-
-function Update() {
-  document.body.style.backgroundPosition = `${camX + gridSize / 2 / camS}px ${
-    camY + gridSize / 2 / camS
-  }px`;
-  document.body.style.backgroundSize = `${gridSize}px ${gridSize}px`;
-  for (let i = 0; i < Nodes.length; i++) {
-    Nodes[i].update();
+class Switch extends Node {
+  constructor(layer, x, y, data) {
+    super(...arguments);
   }
-  for (let i = 0; i < Lines.length; i++) {
-    Lines[i].update();
+
+  interactdown() {
+    this.activeupdate(!this.data.active);
+    render();
   }
 }
 
-function md(e) {
-  const PosX = e.clientX || e.touches[0].clientX;
-  const PosY = e.clientY || e.touches[0].clientY;
-  const overlapping = document.elementsFromPoint(PosX, PosY);
-  if (overlapping.length > 1) {
+// Logic //
+
+var PendingLogic = []; // Logic gates awaiting the tick update.
+
+function AddUpdateLogic(object) {
+  if (PendingLogic.find((e) => e == object)) {
     return;
   }
+  PendingLogic.push(object);
+}
 
-  window.addEventListener("mousemove", mm);
-  window.addEventListener("mouseup", mu);
-  window.addEventListener("touchmove", mm);
-  window.addEventListener("touchend", mu);
+function LogicUpdate() {
+  let dupe = PendingLogic.slice();
+  PendingLogic = [];
+  for (let gate of dupe) {
+    if (gate.update) {
+      gate.update();
+    }
+  }
+  if (dupe.length > 0) {
+    render();
+  }
+}
+setInterval(LogicUpdate, 25);
 
-  let PreviousX = PosX;
-  let PreviousY = PosY;
+// Rendering
 
-  function mm(e) {
-    const X = (e.clientX || e.touches[0].clientX) - PreviousX;
-    const Y = (e.clientY || e.touches[0].clientY) - PreviousY;
-
-    camX += X;
-    camY += Y;
-
-    PreviousX = e.clientX || e.touches[0].clientX;
-    PreviousY = e.clientY || e.touches[0].clientY;
-    Update();
+function render() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.lineWidth = 1;
+  ctx.lineCap = "butt";
+  var startpoint =
+    Math.round(canvas.width / gridSize) * gridSize -
+    gridSize / 2 +
+    (camX % gridSize);
+  for (let i = -startpoint; i < canvas.width / 2; i = i + gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(CanvasOffsetX + i, 0);
+    ctx.lineTo(CanvasOffsetX + i, canvas.height);
+    ctx.stroke();
   }
 
-  function mu(e) {
-    window.removeEventListener("mousemove", mm);
-    window.removeEventListener("mouseup", mu);
-    window.removeEventListener("touchmove", mm);
-    window.removeEventListener("touchend", mu);
+  var startpoint =
+    Math.round(canvas.height / gridSize) * gridSize -
+    gridSize / 2 +
+    (camY % gridSize);
+  for (let i = -startpoint; i < canvas.height / 2; i = i + gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(0, CanvasOffsetY + i);
+    ctx.lineTo(canvas.width, CanvasOffsetY + i);
+    ctx.stroke();
+  }
+
+  for (let layer of VLayers) {
+    layer.render();
   }
 }
 
-function zoom(val) {
-  gridSize = gridSize - val;
-  if (gridSize < 10) {
-    gridSize = 10;
-  }
+function DrawLine(X, Y, XX, YY) {
+  ctx.beginPath();
+  ctx.lineWidth = 5;
+  ctx.lineCap = "round";
+  ctx.moveTo(X + Math.random() * 0, Y + Math.random() * 0);
+  ctx.lineTo(XX, YY);
+  ctx.stroke();
 }
 
-function scroll(e) {
-  if (e.deltaY > 0) {
-    zoom(1);
-  } else {
-    zoom(-1);
+function CanvasResize() {
+  canvas.width = window.innerWidth - 4;
+  canvas.height = window.innerHeight - 4;
+  canvas.style = "position:absolute;left:0%;top:0%;border:2px solid blue;";
+  CanvasOffsetX = canvas.width / 2;
+  CanvasOffsetY = canvas.height / 2;
+  render();
+}
+addEventListener("resize", CanvasResize);
+
+function ToWorldSpace(x, y) {
+  return [CanvasOffsetX - x - camX, CanvasOffsetY - y - camY];
+}
+
+function ToGridSpace(x, y) {
+  const [X, Y] = ToWorldSpace(x, y);
+  return [Math.round(X / gridSize), Math.round(Y / gridSize)];
+}
+
+// Handle Inputs
+
+function WireDown(e) {
+  const MX = e.clientX;
+  const MY = e.clientY;
+  const [GX, GY] = ToGridSpace(MX, MY);
+  const Node = NodesInCell(GX, GY);
+  let Node2;
+
+  function WireUpdate(e) {
+    if (!Node) {
+      return;
+    }
+    const [MouseX, MouseY] = [e.clientX, e.clientY];
+    const [CGX, CGY] = ToGridSpace(MouseX, MouseY);
+    render();
+    let Target = NodesInCell(CGX, CGY);
+    let Test = (Target && ToWorldSpace(Target.x * gridSize)) || "no";
+    let [X, Y] = ToWorldSpace(Node.x * gridSize, Node.y * gridSize);
+    let [XX, YY] = (Target &&
+      ToWorldSpace(Target.x * gridSize, Target.y * gridSize)) || [
+      MouseX,
+      MouseY,
+    ];
+    DrawLine(X, Y, XX, YY);
+    Node2 = Target;
   }
-  Update();
+
+  function WireUp(e) {
+    if (Node2) {
+      if (Node.connected(Node2)) {
+        Node.removeoutput(Node2);
+        Node2.removeinput(Node);
+      } else {
+        Node.appendoutput(Node2);
+        Node2.appendinput(Node);
+      }
+    }
+
+    render();
+  }
+
+  return { move: WireUpdate, up: WireUp };
+}
+
+function DragDown(e) {
+  const MX = e.clientX;
+  const MY = e.clientY;
+  const CX = camX;
+  const CY = camY;
+  const [GX, GY] = ToGridSpace(MX, MY);
+  const Node = NodesInCell(GX, GY);
+
+  function DragUpdate(e) {
+    const [MouseX, MouseY] = [e.clientX, e.clientY];
+    if (Node) {
+      const [CGX, CGY] = ToGridSpace(MouseX, MouseY);
+      const NX = node.x;
+      const NY = node.y;
+      Node.x = CGX;
+      Node.y = CGY;
+      if (Node.x == NX && Node.y == NY) {
+        return;
+      } // nothing should have changed visually, no need to update.
+    } else {
+      // Camera Moving
+      camX = CX + MX - MouseX;
+      camY = CY + MY - MouseY;
+    }
+    render();
+  }
+
+  function DragUp(e) {}
+
+  return { move: DragUpdate, up: DragUp };
+}
+
+const Modes = {
+  0: WireDown,
+  2: DragDown,
+};
+
+function mousedown(e) {
+  const Mode = e.button;
+  if (!Modes[Mode]) {
+    return;
+  }
+  const Funcs = Modes[Mode](e);
+
+  function mousemove(e) {
+    if (Funcs.move) {
+      Funcs.move(e);
+    }
+  }
+
+  function mouseup(e) {
+    canvas.removeEventListener("mousemove", mousemove);
+    canvas.removeEventListener("mouseup", mouseup);
+    if (Funcs.up) {
+      Funcs.up(e);
+    }
+  }
+
+  canvas.addEventListener("mousemove", mousemove);
+  canvas.addEventListener("mouseup", mouseup);
+}
+
+function mousemove(e) {
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+}
+canvas.addEventListener("mousemove", mousemove);
+
+function keydown(e) {
+  if (e.key == "e") {
+    const MX = mouseX;
+    const MY = mouseY;
+    const [GX, GY] = ToGridSpace(MX, MY);
+    const Node = NodesInCell(GX, GY);
+    if (Node && Node.interactdown) {
+      Node.interactdown();
+    }
+  } else if (e.key == "f") {
+    const MX = mouseX;
+    const MY = mouseY;
+    const [GX, GY] = ToGridSpace(MX, MY);
+    const Node = NodesInCell(GX, GY);
+    if (Node && Node.cyclemode) {
+      Node.cyclemode();
+    }
+  }
 }
 
 function keyup(e) {
-  if (e.key == "f") {
-    let Blueprint = {bodies:[{childs:[]}],version:4}
-    for (let Node of Nodes) {
-      const Index = Nodes.findIndex((val) => {
-        return val == Node
-      });
-      Node.index = Index
+  if (e.key == "e") {
+    const MX = mouseX;
+    const MY = mouseY;
+    const [GX, GY] = ToGridSpace(MX, MY);
+    const Node = NodesInCell(GX, GY);
+    if (Node && Node.interactup) {
+      Node.interactup();
     }
-    for (let Node of Nodes) {
+  } else if (e.key == "x") {
+    const MX = mouseX;
+    const MY = mouseY;
+    const [GX, GY] = ToGridSpace(MX, MY);
+    const Node = NodesInCell(GX, GY);
+    if (Node && Node.delete) {
+      Node.delete();
+    }
+  } else if (e.key == "b") {
+    let Blueprint = {bodies:[{childs:[]}],version:4}
+    let index = 0
+    for (let Node of Layer1.nodes) {
+      index++
+      Node.index = index
+    }
+    for (let Node of Layer1.nodes) {
       let ids = []
       for (let Out of Node.outputs) {
         ids.push({id:Out.index})
       }
-      const LogicGate = {color:"DF7F01",controller:{"active":false,"controllers":ids,id:Node.index,joints:null,mode:Node.id},pos:{x:Node.index,y:0,z:0},shapeId:Node.shapeid,xaxis:1,zaxis:-2}
+      const LogicGate = {color:"DF7F01",controller:{"active":false,"controllers":ids,id:Node.index,joints:null,mode:Node.data.mode},pos:{x:Node.index,y:0,z:0},shapeId:Node.data.shapeId,xaxis:1,zaxis:-2}
       Blueprint.bodies[0].childs.push(LogicGate);
     }
-    console.log(JSON.stringify(Blueprint));
+    navigator.clipboard.writeText(JSON.stringify(Blueprint));
+    document.getElementsByClassName("info")[0].hidden = false;
+    window.setTimeout(() => {
+      document.getElementsByClassName("info")[0].hidden = true;
+    }, 3000);
   }
 }
 
-window.addEventListener("mousedown", md);
-window.addEventListener("wheel", scroll);
-window.addEventListener("touchstart", md);
+window.addEventListener("keydown", keydown);
 window.addEventListener("keyup", keyup);
 
-var Types = [
-  ["AND", "Active if all of the linked triggers are active", "9f0f56e8-2c31-4d83-996c-d00a9b296c3f",0],
-  ["OR", "Active if any of the linked triggers are active", "9f0f56e8-2c31-4d83-996c-d00a9b296c3f",1],
-  ["XOR", "Active if only one of the linked triggers are active", "9f0f56e8-2c31-4d83-996c-d00a9b296c3f",2],
-  ["NAND", "Active if any of the linked triggers are inactive", "9f0f56e8-2c31-4d83-996c-d00a9b296c3f",3],
-  ["NOR", "Active if all of the linked triggers are inactive", "9f0f56e8-2c31-4d83-996c-d00a9b296c3f",4],
-  ["XNOR", "Active if an even number of linked triggers are inactive", "9f0f56e8-2c31-4d83-996c-d00a9b296c3f",5],
-  ["BUTTON", "Held", "1e8d93a4-506b-470d-9ada-9c0a321e2db5",0],
-  ["SWITCH", "Toggled", "7cf717d7-d167-4f2d-a6e7-6b2c70aa3986",0],
-];
+function zoom(e) {
+  gridSize =
+    (Math.sign(e.wheelDeltaY) == 0 && gridSize) ||
+    (Math.sign(e.wheelDeltaY) > 0 && gridSize * 1.25) ||
+    gridSize / 1.25;
+  render();
+}
 
-function Test() {
-  var test = document.getElementsByClassName("displaynode");
-  for (let i = 0; i < test.length; i++) {
-    const Type = test[i].outerText.split("\n")[0];
+canvas.addEventListener("mousedown", mousedown);
+canvas.addEventListener("wheel", zoom);
 
-    function Pushed() {
-      const Info = Types[i];
-      const NodeObject = new Node(i, Types[i][2], Info[0], Info[1]);
-      NodeObject.init(
-        window.innerWidth - gridSize * 2.5 - camX / (gridSize / defaultGrid),
-        window.innerHeight - gridSize * 1.5 - camY / (gridSize / defaultGrid)
-      );
+document.addEventListener("contextmenu", (event) => event.preventDefault());
+
+// Init
+
+const Interactables = {
+  "9f0f56e8-2c31-4d83-996c-d00a9b296c3f": LogicGate,
+  "1e8d93a4-506b-470d-9ada-9c0a321e2db5": Button,
+  "7cf717d7-d167-4f2d-a6e7-6b2c70aa3986": Switch
+}
+
+const Layer1 = new Layer("F1");
+
+window.onload = (event) => {
+  for (let btn of document.getElementsByClassName("displaynode")) {
+    function activated() {
+      let [X, Y] = ToGridSpace(CanvasOffsetX,CanvasOffsetY)
+      let Class = Interactables[btn.getAttribute("name")] || Node
+      new Class(Layer1, X, Y, {
+        shapeId: btn.getAttribute("name"),
+        mode: 0,
+        active: false,
+      });
+      render();
     }
-
-    test[i].addEventListener("mouseup", Pushed);
-    test[i].addEventListener("touchended", Pushed);
-  }
-}
-
-window.onscroll = function () {
-  window.scrollTo(0, 0);
-  return false;
+    btn.addEventListener("mousedown",activated);
+  }  
 };
-window.oncontextmenu = function() {
-  return false; // this may annoy some users but its much prefered for my case.
-}
-Update();
 
-document.body.onload = Test;
+Layer1.show();
+CanvasResize();
