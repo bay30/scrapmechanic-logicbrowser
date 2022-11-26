@@ -185,13 +185,14 @@ class LogicGate extends Node {
 
   cyclemode() {
     this.data.mode = this.data.mode >= 5 ? 0 : this.data.mode + 1;
+    AddUpdateLogic(this);
     render();
   }
 
   update() {
     let NewState = false;
     if (this.data.mode == 0) {
-      NewState = true;
+      NewState = (this.inputs.length > 0) && true || false;
       for (let node of this.inputs) {
         if (!node.data.active) {
           NewState = false;
@@ -219,7 +220,7 @@ class LogicGate extends Node {
         }
       }
     } else if (this.data.mode == 4) {
-      NewState = true;
+      NewState = (this.inputs.length > 0) && true || false;
       for (let node of this.inputs) {
         if (node.data.active) {
           NewState = false;
