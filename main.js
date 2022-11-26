@@ -12,6 +12,9 @@ var mouseY = 0;
 
 var Textures = {};
 
+// Utils //
+var LineColor = window.matchMedia('(prefers-color-scheme: dark)').matches && '#404040' || '#000000'
+
 // Classes //
 
 class Node {
@@ -120,6 +123,9 @@ class Node {
       gridSize,
       gridSize
     );
+  }
+
+  renderlines() {
     for (let output of this.outputs) {
       const [X, Y] = ToWorldSpace(this.x * gridSize, this.y * gridSize);
       const [XX, YY] = ToWorldSpace(output.x * gridSize, output.y * gridSize);
@@ -165,6 +171,9 @@ class Layer {
   render() {
     for (let node of this.nodes) {
       node.render();
+    }
+    for (let node of this.nodes) {
+      node.renderlines();
     }
   }
 }
@@ -292,6 +301,7 @@ function render() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.lineWidth = 1;
   ctx.lineCap = "butt";
+  ctx.strokeStyle = '#000000'
   var startpoint =
     Math.round(canvas.width / gridSize) * gridSize -
     gridSize / 2 +
@@ -300,6 +310,7 @@ function render() {
     ctx.beginPath();
     ctx.moveTo(CanvasOffsetX + i, 0);
     ctx.lineTo(CanvasOffsetX + i, canvas.height);
+    ctx.strokeStyle = LineColor
     ctx.stroke();
   }
 
@@ -311,6 +322,7 @@ function render() {
     ctx.beginPath();
     ctx.moveTo(0, CanvasOffsetY + i);
     ctx.lineTo(canvas.width, CanvasOffsetY + i);
+    ctx.strokeStyle = LineColor
     ctx.stroke();
   }
 
@@ -323,8 +335,9 @@ function DrawLine(X, Y, XX, YY) {
   ctx.beginPath();
   ctx.lineWidth = 5;
   ctx.lineCap = "round";
-  ctx.moveTo(X + Math.random() * 0, Y + Math.random() * 0);
+  ctx.moveTo(X, Y);
   ctx.lineTo(XX, YY);
+  ctx.strokeStyle = '#0000FF'
   ctx.stroke();
 }
 
