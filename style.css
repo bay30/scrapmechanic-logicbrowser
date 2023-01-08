@@ -42,9 +42,9 @@
   background: #bbb;
   position: absolute;
   left: -5%;
-  top: 60%;
+  top: 55%;
   width: 20%;
-  height: 36.5%;
+  height: 43.5%;
   border: 2px solid black;
   border-radius: 10px;
   z-index: 2;
@@ -64,7 +64,7 @@
   border: 2px solid black;
   border-radius: 10px;
   width: 90%;
-  height: 100px;
+  height: 70px;
   font-size: 15px;
   user-select: none;
   text-align: center;
@@ -83,7 +83,7 @@
 }
 
 li:not(:first-child){
-  margin: 90px 0%;
+  margin: 60px 0%;
 }
 
 @media (prefers-color-scheme: dark) {

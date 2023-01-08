@@ -19,12 +19,12 @@ var LineColor = window.matchMedia('(prefers-color-scheme: dark)').matches && '#4
 
 class Node {
   constructor(layer, x, y, data) {
-    if (layer.constructor.name == "Layer") {
+    if (!layer || layer.constructor.name == "Layer") {
       this.layer = layer;
       this.x = x ?? 0;
       this.y = y ?? 0;
       this.data = data ?? {};
-      this.layer.nodes.push(this);
+      if (layer) { this.layer.nodes.push(this); }
       this.inputs = [];
       this.outputs = [];
     } else {
@@ -34,7 +34,7 @@ class Node {
   }
 
   delete() {
-    const index = this.layer.nodes.findIndex((element) => element == node);
+    const index = this.layer.nodes.findIndex((element) => element == this);
     this.layer.nodes.splice(index, 1);
     delete this;
     render();
@@ -183,8 +183,12 @@ class LogicGate extends Node {
     super(...arguments);
   }
 
-  cyclemode() {
-    this.data.mode = this.data.mode >= 5 ? 0 : this.data.mode + 1;
+  cyclemode(val) {
+    if (val) {
+      this.data.mode = this.data.mode >= 5 ? 0 : this.data.mode + 1;
+    } else {
+      this.data.mode = this.data.mode < 0 ? 5 : this.data.mode - 1;
+    }
     AddUpdateLogic(this);
     render();
   }
@@ -268,6 +272,96 @@ class Switch extends Node {
   interactdown() {
     this.activeupdate(!this.data.active);
     render();
+  }
+}
+
+class LayerFunction extends Node {
+  constructor(layer, x, y, data) {
+    super(...arguments);
+    this.targetlayer = Layer1;
+    this.clonednodes = [];
+
+    if (this.targetlayer == FocusLayer) {
+      this.delete(); 
+      return; 
+    }
+
+    for (let node of this.targetlayer.nodes) {
+      let clonenode = new node.constructor(Layer2, node.x, node.y, node.data)
+
+      for (let input of node.inputs) {
+        clonenode.inputs.push(node.layer.nodes.findIndex((element) => element == input));
+      }
+
+      for (let output of node.outputs) {
+        clonenode.outputs.push(node.layer.nodes.findIndex((element) => element == output));
+      }
+
+      this.clonednodes.push(clonenode);
+    }
+
+    for (let node of this.clonednodes) {
+      for (let input in node.inputs) {
+        node.inputs[input] = this.clonednodes[node.inputs[input]];
+      }
+
+      for (let output in node.outputs) {
+        node.outputs[output] = this.clonednodes[node.outputs[output]];
+      }
+    }
+
+  }
+
+  cyclemode(val) {
+    if (val > 0) {
+      this.data.mode = this.data.mode >= 255 ? 0 : this.data.mode+1;
+    } else {
+      this.data.mode = this.data.mode <= 0 ? 255 : this.data.mode-1;
+    }
+    AddUpdateLogic(this);
+    render();
+  }
+
+  render() {
+    const [X, Y] = ToWorldSpace(this.x * gridSize, this.y * gridSize)
+    const Text = this.targetlayer.name
+    const FontSize = gridSize/(Text.length+1)*2
+    ctx.font = `${FontSize}px serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = "#FFFFFF"
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = FontSize*0.02;
+    ctx.fillText(Text, X, Y);
+    ctx.strokeText(Text, X, Y);
+  }
+}
+
+class LayerNode extends Node {
+  constructor(layer, x, y, data) {
+    super(...arguments);
+  }
+
+  cyclemode(val) {
+    if (val > 0) {
+      this.data.mode = this.data.mode >= 255 ? 0 : this.data.mode+1;
+    } else {
+      this.data.mode = this.data.mode <= 0 ? 255 : this.data.mode-1;
+    }
+    AddUpdateLogic(this);
+    render();
+  }
+
+  render() {
+    const [X, Y] = ToWorldSpace(this.x * gridSize, this.y * gridSize)
+    ctx.font = `${gridSize}px serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = "#FFFFFF"
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = gridSize*0.02;
+    ctx.fillText(this.data.mode, X, Y);
+    ctx.strokeText(this.data.mode, X, Y);
   }
 }
 
@@ -483,13 +577,13 @@ function keydown(e) {
     if (Node && Node.interactdown) {
       Node.interactdown();
     }
-  } else if (e.key == "f") {
+  } else if (e.key.toLowerCase() == "f") {
     const MX = mouseX;
     const MY = mouseY;
     const [GX, GY] = ToGridSpace(MX, MY);
     const Node = NodesInCell(GX, GY);
     if (Node && Node.cyclemode) {
-      Node.cyclemode();
+      Node.cyclemode(e.key == "f" ? true : false);
     }
   }
 }
@@ -524,13 +618,25 @@ function keyup(e) {
         ids.push({id:Out.index})
       }
       const LogicGate = {color:"DF7F01",controller:{"active":false,"controllers":ids,id:Node.index,joints:null,mode:Node.data.mode},pos:{x:Node.index,y:0,z:0},shapeId:Node.data.shapeId,xaxis:1,zaxis:-2}
-      Blueprint.bodies[0].childs.push(LogicGate);
+      if (Node.data.shapeId != "00000000-0000-0000-0000-000000000000") {
+        Blueprint.bodies[0].childs.push(LogicGate);
+      }
     }
     navigator.clipboard.writeText(JSON.stringify(Blueprint));
     document.getElementsByClassName("info")[0].hidden = false;
     window.setTimeout(() => {
       document.getElementsByClassName("info")[0].hidden = true;
     }, 3000);
+  } else if (e.key == "n") {
+    if (VLayers.includes(Layer1)) {
+      Layer1.hide();
+      Layer2.show();
+      FocusLayer = Layer2;
+    } else {
+      Layer1.show();
+      Layer2.hide();
+      FocusLayer = Layer1;
+    }
   }
 }
 
@@ -555,17 +661,22 @@ document.addEventListener("contextmenu", (event) => event.preventDefault());
 const Interactables = {
   "9f0f56e8-2c31-4d83-996c-d00a9b296c3f": LogicGate,
   "1e8d93a4-506b-470d-9ada-9c0a321e2db5": Button,
-  "7cf717d7-d167-4f2d-a6e7-6b2c70aa3986": Switch
+  "7cf717d7-d167-4f2d-a6e7-6b2c70aa3986": Switch,
+  "LayerFunction": LayerFunction,
+  "LayerNode": LayerNode
 }
 
-const Layer1 = new Layer("F1");
+const Layer1 = new Layer("Main");
+const Layer2 = new Layer("Test");
+
+var FocusLayer = Layer1;
 
 window.onload = (event) => {
   for (let btn of document.getElementsByClassName("displaynode")) {
     function activated() {
       let [X, Y] = ToGridSpace(CanvasOffsetX,CanvasOffsetY)
       let Class = Interactables[btn.getAttribute("name")] || Node
-      new Class(Layer1, X, Y, {
+      new Class(FocusLayer, X, Y, {
         shapeId: btn.getAttribute("name"),
         mode: 0,
         active: false,
